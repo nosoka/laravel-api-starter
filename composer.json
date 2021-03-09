@@ -22,9 +22,7 @@
         },
         "laravel": {
             "providers": [
-                "Api\\Providers\\AuthServiceProvider",
-                "Api\\Providers\\RouteServiceProvider"
-            ]
+                "Api\\Providers\\ApiServiceProvider"            ]
         }
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Api\Services;
 
+use Api\Events\UserRegistered;
 use Api\Models\User;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\JWTAuth;
@@ -24,14 +25,17 @@ class AuthService
     public function login(array $credentials = [])
     {
         try {
-            if (!$accessToken = $this->jwtAuth->attempt($credentials)) {
-                return $this->setError('Wrong email or password.');
+            if (! $this->jwtAuth->attempt($credentials)) {
+                return $this->setError( 'Wrong email or password.' );
+            }
+            if (! auth()->user()->hasVerifiedEmail()) {
+                return $this->setError( 'Please verify your email before logging in' );
             }
         } catch (JWTException $e) {
-            return $this->setError('Wrong email or password.');
+            return $this->setError( 'Wrong email or password.' );
         }
 
-        return $accessToken;
+        return auth()->user();
     }
 
     /**
@@ -41,12 +45,35 @@ class AuthService
      */
     public function register(array $data = [])
     {
-        if (!$newUser = $this->user->create($data)) {
-            return $this->setError('Could not create user account');
+        if (! $newUser = $this->user->create($data)) {
+            return $this->setError( 'Could not create user account' );
         }
 
-        // TODO:: send verification email
+        event(new UserRegistered($newUser));
+
         return $newUser;
+    }
+
+    public function verifyEmail(array $data = [])
+    {
+        if (! $user = $this->user->findByIdAndEmailHash($data) ) {
+            return $this->setError( 'Could not validate email' );
+        }
+        if (! $user->markEmailAsVerified() )
+            return $this->setError( 'Could not validate email' );
+
+        return true;
+    }
+
+    public function resendVerificationEmail(string $email = null)
+    {
+        if (! $user = $this->user->findByEmail($email) ) {
+            return $this->setError( 'No account found with the provided email.' );
+        }
+
+        $user->sendEmailVerificationNotification();
+
+        return true;
     }
 
     public function setError(string $error = null)
