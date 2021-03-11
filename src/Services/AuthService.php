@@ -58,6 +58,9 @@ class AuthService
         if (! $user = $this->user->findByIdAndEmailHash($data) ) {
             return $this->setError( 'Could not validate email' );
         }
+        if ( $user->hasVerifiedEmail() ) {
+            return $this->setError( 'Email is already verified.' );
+        }
         if (! $user->markEmailAsVerified() )
             return $this->setError( 'Could not validate email' );
 

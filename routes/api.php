@@ -1,19 +1,21 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
+
+// dingo needs atleast one route to not break routing
 $api = app('Dingo\Api\Routing\Router');
-
 $api->version('v1', function ($api) {
-    $api->group(['prefix' => 'auth', 'as' => 'api.auth', 'namespace' => 'Api\Http\Controllers'], function ($api) {
+	$api->post('api', function () { return null; });
+});
 
-		$api->post('login', ['as' => 'login', 'uses' => 'AuthController@login']);
-		$api->post('register', ['as' => 'register', 'uses' => 'AuthController@register']);
+Route::group(['prefix' => 'api/auth', 'as' => 'api.auth.',  'namespace' => 'Api\Http\Controllers' ], function() {
 
-		$api->get('verify.email', ['as' => 'verify.email', 'uses' => 'AuthController@verifyEmail'])->middleware('signed');
-		$api->post('send.verification.email', ['as' => 'send.verification.email', 'uses' => 'AuthController@sendVerificationEmail']);
+    Route::post('login', 'AuthController@login')->name('login');
+    Route::post('register', 'AuthController@register')->name('register');
+    Route::get('verify.email', 'AuthController@verifyEmail')->name('verify.email')->middleware('signed');
+    Route::post('send.verification.email', 'AuthController@sendVerificationEmail')->name('send.verification.email');
+    Route::post('forgot.password', 'AuthController@forgotPassword')->name('forgot.password');
+    Route::post('reset.password', 'AuthController@resetPassword')->name('reset.password');
+    Route::get('reset.password', 'AuthController@verifyResetPassword')->name('reset.password');
 
-		$api->post('forgot.password', ['as' => 'forgot.password', 'uses' => 'AuthController@forgotPassword']);
-		$api->post('reset.password', ['as' => 'reset.password', 'uses' => 'AuthController@resetPassword']);
-		$api->get('reset.password', ['as' => 'reset.password', 'uses' => 'AuthController@verifyResetPassword']);
-
-	});
 });

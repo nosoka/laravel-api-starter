@@ -1,6 +1,6 @@
 <?php
 
-namespace Api\Notifications;
+namespace Api\Notifications;;
 
 use Illuminate\Auth\Notifications\ResetPassword as BaseResetPassword;
 use Illuminate\Bus\Queueable;
@@ -16,9 +16,9 @@ class ResetPassword extends BaseResetPassword implements ShouldQueue
     {
         $route = 'api.auth.reset.password';
 
-        return app('api.url')->version('v1')->route($route, [
+        return url(route($route, [
             'token' => $token,
             'email' => $notifiable->getEmailForPasswordReset(),
-        ]);
+        ]));
     }
 }
