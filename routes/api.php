@@ -9,6 +9,11 @@ $api->version('v1', function ($api) {
 		$api->post('register', ['as' => 'register', 'uses' => 'AuthController@register']);
 
 		$api->get('verify.email', ['as' => 'verify.email', 'uses' => 'AuthController@verifyEmail'])->middleware('signed');
-		$api->post('resend.verification.email', ['as' => 'resend.verification.email', 'uses' => 'AuthController@resendVerificationEmail']);
+		$api->post('send.verification.email', ['as' => 'send.verification.email', 'uses' => 'AuthController@sendVerificationEmail']);
+
+		$api->post('forgot.password', ['as' => 'forgot.password', 'uses' => 'AuthController@forgotPassword']);
+		$api->post('reset.password', ['as' => 'reset.password', 'uses' => 'AuthController@resetPassword']);
+		$api->get('reset.password', ['as' => 'reset.password', 'uses' => 'AuthController@verifyResetPassword']);
+
 	});
 });

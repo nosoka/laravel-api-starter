@@ -3,10 +3,13 @@
 namespace Api\Http\Controllers;
 
 use Api\Services\AuthService;
-use Api\Http\Requests\ReSendVerificationEmailRequest;
+use Api\Http\Requests\ForgotPasswordRequest;
+use Api\Http\Requests\ResetPasswordRequest;
+use Api\Http\Requests\SendVerificationEmailRequest;
 use Api\Http\Requests\UserLoginRequest;
 use Api\Http\Requests\UserRegisterRequest;
 use Api\Http\Requests\VerifyEmailRequest;
+use Api\Http\Requests\VerifyResetPasswordRequest;
 
 class AuthController extends BaseController
 {
@@ -35,19 +38,46 @@ class AuthController extends BaseController
 
     public function verifyEmail(VerifyEmailRequest $request)
     {
-        if (! $this->auth->verifyEmail( $request->validated() )) {
+        if (! $user = $this->auth->verifyEmail( $request->validated() )) {
             return $this->response->errorBadRequest( $this->auth->error() );
         }
 
         return $this->sendMessageResponse('Email verified successfully');
     }
 
-    public function resendVerificationEmail(ReSendVerificationEmailRequest $request)
+    public function sendVerificationEmail(SendVerificationEmailRequest $request)
     {
-        if (! $this->auth->resendVerificationEmail( $request['email'] )) {
+        if (! $this->auth->sendVerificationEmail( $request['email'] )) {
             return $this->response->errorBadRequest( $this->auth->error() );
         }
 
         return $this->sendMessageResponse('Sent verification email successfully');
+    }
+
+    public function forgotPassword(ForgotPasswordRequest $request)
+    {
+        if (! $this->auth->sendPasswordResetEmail( $request->validated() )) {
+            return $this->response->errorBadRequest( $this->auth->error() );
+        }
+
+        return $this->sendMessageResponse('A link to reset password is send to your email');
+    }
+
+    public function verifyResetPassword(VerifyResetPasswordRequest $request)
+    {
+        if (! $user = $this->auth->verifyResetPassword( $request->validated() )) {
+            return $this->response->errorBadRequest( $this->auth->error() );
+        }
+
+        return $this->sendMessageResponse('Reset Token is validated successfully');
+    }
+
+    public function resetPassword(ResetPasswordRequest $request)
+    {
+        if (! $user = $this->auth->resetPassword( $request->validated() )) {
+            return $this->response->errorBadRequest( $this->auth->error() );
+        }
+
+        return $this->sendArrayResponse( ['access_token' => $user->access_token] );
     }
 }

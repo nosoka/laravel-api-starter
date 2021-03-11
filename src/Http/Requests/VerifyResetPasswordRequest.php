@@ -2,7 +2,7 @@
 
 namespace Api\Http\Requests;
 
-class ReSendVerificationEmailRequest extends BaseFormRequest
+class VerifyResetPasswordRequest extends BaseFormRequest
 {
     public function authorize()
     {
@@ -12,6 +12,7 @@ class ReSendVerificationEmailRequest extends BaseFormRequest
     public function rules()
     {
         return [
+            'token' => 'required',
             'email' => 'required|exists:users,email',
         ];
     }

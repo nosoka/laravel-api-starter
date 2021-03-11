@@ -2,7 +2,9 @@
 
 namespace Api\Models;
 
+use Api\Notifications\ResetPassword;
 use Api\Notifications\VerificationEmail;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Hash;
@@ -12,7 +14,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 // Extend instead of changing the user model that comes with laravel install
 class_alias(config('auth.providers.users.model'), 'Api\Models\DynamicParent');
 
-class User extends DynamicParent implements JWTSubject, MustVerifyEmail
+class User extends DynamicParent implements JWTSubject, MustVerifyEmail, CanResetPassword
 {
     use Notifiable;
 
@@ -41,18 +43,19 @@ class User extends DynamicParent implements JWTSubject, MustVerifyEmail
         return JWTAuth::fromUser($this) ?: false;
     }
 
-   public function create(array $data = [])
+    public function setPasswordAttribute($value)
     {
-        if (array_key_exists('password', $data)) {
-            $data['password'] = Hash::make($data['password']);
-        }
-
-        return parent::create($data) ?: false;
+        $this->attributes['password'] = Hash::make($value);
     }
 
     public function sendEmailVerificationNotification()
     {
         $this->notify(new VerificationEmail);
+    }
+
+    public function sendPasswordResetNotification($token)
+    {
+        return $this->notify(new ResetPassword($token));
     }
 
     public function findByLogin(string $login = null)
