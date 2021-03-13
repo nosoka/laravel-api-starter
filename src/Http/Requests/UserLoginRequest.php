@@ -12,7 +12,7 @@ class UserLoginRequest extends BaseFormRequest
     public function rules()
     {
         return [
-            'email'     => 'required',
+            'email'     => 'required|email',
             'password'  => 'required',
         ];
     }

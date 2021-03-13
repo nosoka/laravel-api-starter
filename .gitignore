@@ -1,0 +1,7 @@
+vendor/
+tests/_data/
+tests/_support/
+tests/_output/
+.DS_Store
+.idea
+.env

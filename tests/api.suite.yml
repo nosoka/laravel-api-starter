@@ -1,0 +1,18 @@
+actor: ApiTester
+modules:
+    enabled:
+        - Asserts
+        - Laravel:
+            root: ../../laravel/versions/current/
+            environment_file: .env.testing
+        - REST:
+            url: http://laravel.local/api/
+            part: Json
+            depends: PhpBrowser
+
+# TODO
+# load from .env.testing
+# create temp database
+# run migrations
+# seed data
+# use the data to test
