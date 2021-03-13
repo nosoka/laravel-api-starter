@@ -38,6 +38,12 @@ class User extends DynamicParent implements JWTSubject, MustVerifyEmail, CanRese
         return [];
     }
 
+
+    public function token()
+    {
+        return $this->hasOne(PasswordReset::class, 'email', 'email');
+    }
+
     public function getAccessTokenAttribute()
     {
         return JWTAuth::fromUser($this) ?: false;

@@ -14,5 +14,5 @@ modules:
 # load from .env.testing
 # create temp database
 # run migrations
-# seed data
-# use the data to test
+# seed fake data
+# use fake data to test

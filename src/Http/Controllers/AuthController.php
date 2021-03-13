@@ -60,7 +60,7 @@ class AuthController extends BaseController
             return $this->response->errorBadRequest( $this->auth->error() );
         }
 
-        return $this->sendMessageResponse('A link to reset password is send to your email');
+        return $this->sendMessageResponse('Sent password reset email successfully');
     }
 
     public function verifyResetPassword(VerifyResetPasswordRequest $request)
