@@ -34,7 +34,8 @@ Re-usable laravel dropin package for following api authentication methods.
     ```
 
 ## Tests
-- Run following to create/send report
+- create/change .env.testing (from .env)
+- run codeception tests
     ```
     $ ./vendor/bin/codecept -c api build
     $ ./vendor/bin/codecept -c api run
