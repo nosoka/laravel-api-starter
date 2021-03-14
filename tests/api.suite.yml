@@ -3,7 +3,7 @@ modules:
     enabled:
         - Asserts
         - Laravel:
-            root: ../../laravel/versions/current/
+            root: ../
             environment_file: .env.testing
             cleanup: false
         - REST:
