@@ -2,193 +2,151 @@
 
 use Api\Models\User;
 use Faker\Factory;
+use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Config;
+use Step\Api\AuthStep;
 
 class AuthCest
 {
     protected $faker;
     protected $user;
 
+    // list actions here that you want to execute before each test
     public function _before(ApiTester $I, User $user)
     {
-    	$this->faker = Factory::create();
-    	$this->user  = $user;
+        $this->faker = Factory::create();
+        $this->user  = $user;
+
+        $this->_verifyEnvironment($I);
 
     	$this->_setHeaders($I);
     }
 
-    // set headers
-	public function _setHeaders(ApiTester $I)
+    // list actions here that you want to execute once before all tests
+    public function beforeAllTests(ApiTester $I)
     {
-		$I->haveHttpHeader('accept', 'application/json');
-		$I->haveHttpHeader('content-type', 'application/json');
+        $I->resetEmails();
+
+        $I->callArtisan('migrate:fresh');
     }
 
-    public function testLogin(ApiTester $I)
+    public function testRegistration(AuthStep $I)
     {
-        // set input
-		$url 				= '/auth/login';
-        $validInput 		= [ 'email' => 'admin@admin.com', 'password' => 'admin' ];
-        $invalidFakeInput	= [ 'email' => $this->faker->email, 'password' => $this->faker->password ];
-
-		$this->_testEmptyInputValidation($I, $url);
-		$this->_testInvalidEmailFormatValidation($I, $url);
-
-        // test invalid input - random/fake input
-        $I->sendPOST($url, $invalidFakeInput);
-        $I->seeResponseIsJson();
-        $I->seeResponseCodeIs(401);
-        $I->seeResponseMatchesJsonType([ 'string:regex(/wrong email or password/i)' ], '$.message');
-
-        // test valid input
-        $I->sendPOST($url, $validInput);
-        $I->seeResponseIsJson();
-        $I->seeResponseCodeIs(200);
-		$I->seeResponseMatchesJsonType([ 'access_token' => 'string' ], '$.data');
-    }
-
-    public function testRegistration(ApiTester $I)
-    {
-		$url 		= '/auth/register';
-        $validInput = [
- 			'email' => $this->faker->email, 'password' => $this->faker->password, 'name' => $this->faker->name
+        $url            = '/auth/register';
+        $validUrlParams = [
+            'name'      => $this->faker->name,
+            'email'     => $this->faker->email,
+            'password'  => 'password',
         ];
 
-		$this->_testEmptyInputValidation($I, $url);
-		$this->_testInvalidEmailFormatValidation($I, $url);
-		$this->_testFieldExistsValidation($I, $url, 'email', $this->user->first()->email);
+        $I->_testResponseHasMessage($url, $validUrlParams, 'registered successfully', null, 200);
 
-        // test valid input
-        $I->sendPOST($url, $validInput);
-        $I->seeResponseIsJson();
-        $I->seeResponseCodeIs(200);
-        $I->seeResponseMatchesJsonType([ 'string:regex(/registered successfully/)' ], '$.message');
+		$I->_testEmptyInputValidation($url);
+
+		$I->_testInvalidEmailInputValidation($url, [ 'email' => $this->faker->name ]);
+
+		$I->_testFieldAlreadyExistsValidation($url, 'email', $this->user->first()->email);
     }
 
-	// TODO:: add validations
-    public function _testVerifyEmail(ApiTester $I)
+    public function testVerifyEmail(AuthStep $I)
+    {
+        $url = '/auth/verify.email';
+        $validUrlParams = $I->_grabMatchingUrlFromLastEmail('verify.email');
+
+        $I->_testResponseHasMessage($url, [], 'invalid signature', 'GET', 403);
+
+        $I->_testResponseHasMessage($url, $validUrlParams, 'verified successfully', 'GET', 200);
+    }
+
+    public function testLogin(AuthStep $I)
+    {
+        $url = '/auth/login';
+        $validUrlParams = [ 'email' => $this->user->first()->email, 'password' => 'password' ];
+        $fakeUrlParams  = [ 'email' => $this->faker->email, 'password' => $this->faker->password ];
+
+        $I->_testEmptyInputValidation($url);
+
+        $I->_testInvalidEmailInputValidation($url, [ 'email' => $this->faker->name ]);
+
+        $I->_testResponseHasMessage($url, $fakeUrlParams, 'wrong email or password', null, 401);
+
+        $I->_testResponseHasData($url, $validUrlParams, 'access_token', 'POST', 200);
+    }
+
+    public function testSendVerificationEmail(AuthStep $I)
 	{
-		$url = '/auth/verify.email';
+		$url = '/auth/send.verification.email';
+        $validUrlParams = [ 'email' => $this->user->first()->email ];
+
+		$I->_testEmptyInputValidation($url);
+
+        $I->_testInvalidEmailInputValidation($url, [ 'email' => $this->faker->name ]);
+
+		$I->_testFieldDoesNotExistValidation($url, 'email', $this->faker->email);
+
+		$I->_testEmailIsSentSuccessfully($url, $validUrlParams);
 	}
 
-    public function testSendVerificationEmail(ApiTester $I)
+    public function testForgotPassword(AuthStep $I)
 	{
-		$url 		= '/auth/send.verification.email';
-        $validInput = [ 'email' => $this->user->first()->email ];
+		$url = '/auth/forgot.password';
+        $validUrlParams = [ 'email' => $this->user->first()->email ];
 
-		$this->_testEmptyInputValidation($I, $url);
+		$I->_testEmptyInputValidation($url);
 
-		$this->_testInvalidEmailFormatValidation($I, $url);
+        $I->_testInvalidEmailInputValidation($url, [ 'email' => $this->faker->name ]);
 
-		$this->_testFieldDoesNotExistValidation($I, $url, 'email', $this->faker->email);
+		$I->_testFieldDoesNotExistValidation($url, 'email', $this->faker->email);
 
-		$this->_testEmailIsSentSuccessfully($I, $url, $validInput);
+		$I->_testEmailIsSentSuccessfully($url, $validUrlParams);
 	}
 
-    public function testForgotPassword(ApiTester $I)
+    public function testVerifyResetPassword(AuthStep $I)
 	{
-		$url 		= '/auth/forgot.password';
-        $validInput = [ 'email' => $this->user->first()->email ];
+        $url = '/auth/reset.password';
+        $validUrlParams     = $I->_grabMatchingUrlFromLastEmail('reset.password');
+        $fakeTokenParams    = ['email' => $validUrlParams['email'], 'token' => $this->faker->text ];
 
-		$this->_testEmptyInputValidation($I, $url);
+		$I->_testEmptyInputValidation($url, 'GET');
 
-		$this->_testInvalidEmailFormatValidation($I, $url);
+        $I->_testInvalidEmailInputValidation($url, [ 'email' => $this->faker->name ], 'GET');
 
-		$this->_testFieldDoesNotExistValidation($I, $url, 'email', $this->faker->email);
+		$I->_testFieldDoesNotExistValidation($url, 'email', $this->faker->email, 'GET');
 
-		$this->_testEmailIsSentSuccessfully($I, $url, $validInput);
+        $I->_testResponseHasMessage($url, $fakeTokenParams, 'could not find that token', 'GET', 400);
+
+        $I->_testResponseHasMessage($url, $validUrlParams, 'validated successfully', 'GET', 200);
 	}
 
-    public function testVerifyResetPassword(ApiTester $I)
+    public function testResetPassword(AuthStep $I)
 	{
 		$url = '/auth/reset.password';
+        $validUrlParams = $I->_grabMatchingUrlFromLastEmail('reset.password');
+        $validUrlParams['password'] = 'password';
 
-		$this->_testEmptyInputValidation($I, $url, 'GET');
+		$I->_testEmptyInputValidation($url);
 
-		$this->_testInvalidEmailFormatValidation($I, $url, 'GET');
+        $I->_testInvalidEmailInputValidation($url, [ 'email' => $this->faker->name ]);
 
-		$this->_testFieldDoesNotExistValidation($I, $url, 'email', $this->faker->email, 'GET');
+		$I->_testFieldDoesNotExistValidation($url, 'email', $this->faker->email);
 
-		$this->_testFieldDoesNotExistValidation($I, $url, 'token', $this->faker->name, 'GET');
+        $I->_testResponseHasData($url, $validUrlParams, 'access_token', 'POST', 200);
+
+        $I->_testResponseHasMessage($url, $validUrlParams, 'could not find that token', 'POST', 400);
 	}
 
-    public function testResetPassword(ApiTester $I)
-	{
-		$url = '/auth/reset.password';
 
-		$this->_testEmptyInputValidation($I, $url);
-
-		$this->_testInvalidEmailFormatValidation($I, $url);
-
-		$this->_testFieldDoesNotExistValidation($I, $url, 'email', $this->faker->email);
-
-		$this->_testFieldDoesNotExistValidation($I, $url, 'token', $this->faker->name);
-
-		// TODO:: test valid input
-		// call /auth/forgot.password lookup the token in db and call /auth/reset.password with token
-	}
-
-    // test form validation when input is empty
-	public function _testEmptyInputValidation(ApiTester $I, string $url, string $method = null)
-	{
-		$urlParams = [];
-
-		(strtoupper($method) == 'GET')
-			? $I->sendGET($url, $urlParams)
-			: $I->sendPOST($url, $urlParams);
-        $I->seeResponseIsJson();
-        $I->seeResponseCodeIs(422);
-        $I->assertGreaterThan(0, sizeof($I->grabDataFromResponseByJsonPath('$.errors')[0]));
-        $I->seeResponseMatchesJsonType([ 'string:regex(/field is required/)' ], '$.errors[*]');
-	}
-
-    // test form validation that input is not in valid email format
-	public function _testInvalidEmailFormatValidation(ApiTester $I, string $url, string $method = null)
-	{
-		$urlParams = [ 'email' => $this->faker->text ];
-
-		(strtoupper($method) == 'GET')
-			? $I->sendGET($url, $urlParams)
-			: $I->sendPOST($url, $urlParams);
-        $I->seeResponseIsJson();
-        $I->seeResponseCodeIs(422);
-        $I->seeResponseMatchesJsonType([ 'string:regex(/must be a valid email/i)' ], '$.errors.email[0]');
+    public function _verifyEnvironment(ApiTester $I)
+    {
+        if (! App::environment('testing') ) {
+            die("\n not a testing environment. exiting \n");
+        }
     }
 
-    // test form validation that random/fake input does not exist in database
-	public function _testFieldDoesNotExistValidation(ApiTester $I, string $url, string $fieldName, string $fieldValue, string $method = null)
-	{
-        $urlParams 	= [ $fieldName => $fieldValue ];
-
-		(strtoupper($method) == 'GET')
-			? $I->sendGET($url, $urlParams)
-			: $I->sendPOST($url, $urlParams);
-        $I->seeResponseIsJson();
-        $I->seeResponseCodeIs(422);
-        $I->seeResponseMatchesJsonType([ 'string:regex(/selected(.*)is invalid/i)' ], "$.errors.{$fieldName}[0]");
-    }
-
-    // test form validation that input exists in database
-	public function _testFieldExistsValidation(ApiTester $I, string $url, string $fieldName, string $fieldValue, string $method = null)
-	{
-        $urlParams 	= [ $fieldName => $fieldValue ];
-
-		(strtoupper($method) == 'GET')
-			? $I->sendGET($url, $urlParams)
-			: $I->sendPOST($url, $urlParams);
-        $I->seeResponseIsJson();
-        $I->seeResponseCodeIs(422);
-        $I->seeResponseMatchesJsonType([ 'string:regex(/has already been taken/i)' ], "$.errors.{$fieldName}[0]");
-    }
-
-    // test valid input - email
-    // TODO:: check that email is actually sent
-	public function _testEmailIsSentSuccessfully(ApiTester $I, string $url, array $urlParams, string $method = null)
-	{
-		(strtoupper($method) == 'GET')
-			? $I->sendGET($url, $urlParams)
-			: $I->sendPOST($url, $urlParams);
-        $I->seeResponseIsJson();
-        $I->seeResponseCodeIs(200);
-        $I->seeResponseMatchesJsonType([ 'string:regex(/sent(.*)mail successfully/i)' ], '$.message');
+    // set headers
+    public function _setHeaders(ApiTester $I)
+    {
+        $I->haveHttpHeader('accept', 'application/json');
+        $I->haveHttpHeader('content-type', 'application/json');
     }
 }

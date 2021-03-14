@@ -5,14 +5,13 @@ modules:
         - Laravel:
             root: ../../laravel/versions/current/
             environment_file: .env.testing
+            cleanup: false
         - REST:
-            url: http://laravel.local/api/
+            url: /api/
             part: Json
-            depends: PhpBrowser
-
-# TODO
-# load from .env.testing
-# create temp database
-# run migrations
-# seed fake data
-# use fake data to test
+            depends: Laravel
+        - MailCatcher
+    config:
+        MailCatcher:
+            url: 'http://127.0.0.1'
+            port: '1080'

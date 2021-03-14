@@ -12,7 +12,7 @@ class ResetPasswordRequest extends BaseFormRequest
     public function rules()
     {
         return [
-            'token'     => 'required|exists:password_resets,token',
+            'token'     => 'required',
             'email'     => 'required|email|exists:users,email',
             'password'  => 'required',
         ];

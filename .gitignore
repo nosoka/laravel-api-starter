@@ -1,6 +1,6 @@
 vendor/
 tests/_data/
-tests/_support/
+tests/_support/_generated/
 tests/_output/
 .DS_Store
 .idea
